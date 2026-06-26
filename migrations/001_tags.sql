@@ -1,0 +1,3 @@
+-- NOTE: tags and car_tags tables are created in app/database.py's
+-- initialize_database() function, not via this migrations folder.
+-- This file is a placeholder for future schema migrations going forward.
