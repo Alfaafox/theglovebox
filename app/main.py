@@ -4,8 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import APP_NAME
-from app.config import UPLOAD_DIR
+from app.config import APP_NAME, UPLOAD_DIR
 
 from app.database import (
     connect,
@@ -13,9 +12,13 @@ from app.database import (
     initialize_database,
 )
 
-from app.routers.cars import router as cars_router
-from app.routers.posts import router as posts_router
 from app.routers.health import router as health_router
+from app.routers.brands import router as brands_router
+from app.routers.manufacturers import router as manufacturers_router
+from app.routers.series import router as series_router
+from app.routers.cars import router as cars_router
+from app.routers.tags import router as tags_router
+from app.routers.posts import router as posts_router
 from app.routers.upload import router as upload_router
 
 
@@ -32,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=APP_NAME,
-    version="2.1.0",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -50,21 +53,38 @@ app.mount(
     name="uploads",
 )
 
+app.include_router(health_router, tags=["Health"])
+
+app.include_router(brands_router, prefix="/api/brands", tags=["Brands"])
+
 app.include_router(
-    health_router,
-    tags=["Health"],
+    manufacturers_router,
+    prefix="/api/manufacturers",
+    tags=["Manufacturers"],
+)
+
+app.include_router(
+    series_router,
+    prefix="/api/series",
+    tags=["Series"],
 )
 
 app.include_router(
     cars_router,
     prefix="/api/cars",
-    tags=["Garage"],
+    tags=["Cars"],
+)
+
+app.include_router(
+    tags_router,
+    prefix="/api/tags",
+    tags=["Tags"],
 )
 
 app.include_router(
     posts_router,
     prefix="/api/posts",
-    tags=["Blog"],
+    tags=["Posts"],
 )
 
 app.include_router(
@@ -75,10 +95,9 @@ app.include_router(
 
 @app.get("/")
 async def root():
-
     return {
         "application": APP_NAME,
-        "version": "2.1.0",
+        "version": "3.0.0",
         "status": "running",
     }
 

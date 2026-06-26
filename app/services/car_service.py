@@ -1,5 +1,4 @@
 import time
-import uuid
 
 from fastapi import HTTPException
 
@@ -7,29 +6,84 @@ from app.database import get_pool
 
 
 async def list_cars():
+
     pool = get_pool()
 
     async with pool.acquire() as conn:
+
         rows = await conn.fetch(
             """
-            SELECT *
-            FROM cars
-            ORDER BY created_at DESC
+            SELECT
+                c.id,
+                c.name,
+                c.variant,
+                c.scale,
+                c.year,
+                c.country,
+                c.status,
+                c.purchase_price,
+                c.purchase_date,
+                c.purchase_location,
+                c.estimated_value,
+                c.story,
+                c.notes,
+                c.created_at,
+                c.updated_at,
+
+                b.id   AS brand_id,
+                b.name AS brand,
+
+                m.id   AS manufacturer_id,
+                m.name AS manufacturer,
+
+                s.id   AS series_id,
+                s.name AS series
+
+            FROM cars c
+
+            INNER JOIN brands b
+                ON b.id=c.brand_id
+
+            INNER JOIN manufacturers m
+                ON m.id=c.manufacturer_id
+
+            INNER JOIN series s
+                ON s.id=c.series_id
+
+            ORDER BY c.created_at DESC
             """
         )
 
-    return [dict(row) for row in rows]
+    return [dict(r) for r in rows]
 
 
-async def get_car(car_id: str):
+async def get_car(car_id: int):
+
     pool = get_pool()
 
     async with pool.acquire() as conn:
+
         row = await conn.fetchrow(
             """
-            SELECT *
-            FROM cars
-            WHERE id=$1
+            SELECT
+                c.*,
+
+                b.name AS brand,
+                m.name AS manufacturer,
+                s.name AS series
+
+            FROM cars c
+
+            INNER JOIN brands b
+                ON b.id=c.brand_id
+
+            INNER JOIN manufacturers m
+                ON m.id=c.manufacturer_id
+
+            INNER JOIN series s
+                ON s.id=c.series_id
+
+            WHERE c.id=$1
             """,
             car_id,
         )
@@ -43,98 +97,201 @@ async def get_car(car_id: str):
     return dict(row)
 
 
-async def create_car(car):
+async def create_car(data):
+
     pool = get_pool()
 
-    car_id = str(uuid.uuid4())
-    created_at = int(time.time() * 1000)
+    now = int(time.time() * 1000)
 
     async with pool.acquire() as conn:
-        await conn.execute(
+
+        brand = await conn.fetchval(
+            "SELECT id FROM brands WHERE id=$1",
+            data.brand_id,
+        )
+
+        if brand is None:
+            raise HTTPException(
+                400,
+                "Invalid brand.",
+            )
+
+        manufacturer = await conn.fetchval(
+            "SELECT id FROM manufacturers WHERE id=$1",
+            data.manufacturer_id,
+        )
+
+        if manufacturer is None:
+            raise HTTPException(
+                400,
+                "Invalid manufacturer.",
+            )
+
+        series = await conn.fetchval(
+            "SELECT id FROM series WHERE id=$1",
+            data.series_id,
+        )
+
+        if series is None:
+            raise HTTPException(
+                400,
+                "Invalid series.",
+            )
+
+        row = await conn.fetchrow(
             """
             INSERT INTO cars
             (
-                id,
+                brand_id,
+                manufacturer_id,
+                series_id,
+
                 name,
-                brand,
-                status,
                 variant,
-                tags,
-                photo,
+                scale,
+                year,
+                country,
+
+                status,
+
+                purchase_price,
+                purchase_date,
+                purchase_location,
+
+                estimated_value,
+
                 story,
-                created_at
+                notes,
+
+                created_at,
+                updated_at
+
             )
             VALUES
             (
-                $1,$2,$3,$4,$5,$6,$7,$8,$9
+                $1,$2,$3,
+                $4,$5,$6,$7,$8,
+                $9,
+                $10,$11,$12,
+                $13,
+                $14,$15,
+                $16,$17
             )
+            RETURNING *
             """,
-            car_id,
-            car.name,
-            car.brand,
-            car.status,
-            car.variant,
-            car.tags,
-            car.photo,
-            car.story,
-            created_at,
+            data.brand_id,
+            data.manufacturer_id,
+            data.series_id,
+
+            data.name,
+            data.variant,
+            data.scale,
+            data.year,
+            data.country,
+
+            data.status,
+
+            data.purchase_price,
+            data.purchase_date,
+            data.purchase_location,
+
+            data.estimated_value,
+
+            data.story,
+            data.notes,
+
+            now,
+            now,
         )
 
-    return {
-        "id": car_id,
-        **car.model_dump(),
-        "created_at": created_at,
-    }
+    return dict(row)
 
 
-async def update_car(car_id: str, car):
+async def update_car(car_id: int, data):
+
     pool = get_pool()
+
+    now = int(time.time() * 1000)
 
     async with pool.acquire() as conn:
 
-        result = await conn.execute(
+        row = await conn.fetchrow(
             """
             UPDATE cars
             SET
-                name=$1,
-                brand=$2,
-                status=$3,
-                variant=$4,
-                tags=$5,
-                photo=$6,
-                story=$7
-            WHERE id=$8
+
+                brand_id=$1,
+                manufacturer_id=$2,
+                series_id=$3,
+
+                name=$4,
+                variant=$5,
+                scale=$6,
+                year=$7,
+                country=$8,
+
+                status=$9,
+
+                purchase_price=$10,
+                purchase_date=$11,
+                purchase_location=$12,
+
+                estimated_value=$13,
+
+                story=$14,
+                notes=$15,
+
+                updated_at=$16
+
+            WHERE id=$17
+
+            RETURNING *
             """,
-            car.name,
-            car.brand,
-            car.status,
-            car.variant,
-            car.tags,
-            car.photo,
-            car.story,
+            data.brand_id,
+            data.manufacturer_id,
+            data.series_id,
+
+            data.name,
+            data.variant,
+            data.scale,
+            data.year,
+            data.country,
+
+            data.status,
+
+            data.purchase_price,
+            data.purchase_date,
+            data.purchase_location,
+
+            data.estimated_value,
+
+            data.story,
+            data.notes,
+
+            now,
+
             car_id,
         )
 
-    if result == "UPDATE 0":
+    if row is None:
         raise HTTPException(
-            status_code=404,
-            detail="Car not found",
+            404,
+            "Car not found",
         )
 
-    return {
-        "id": car_id,
-        **car.model_dump(),
-    }
+    return dict(row)
 
 
-async def delete_car(car_id: str):
+async def delete_car(car_id: int):
+
     pool = get_pool()
 
     async with pool.acquire() as conn:
 
         result = await conn.execute(
             """
-            DELETE FROM cars
+            DELETE
+            FROM cars
             WHERE id=$1
             """,
             car_id,
@@ -142,8 +299,8 @@ async def delete_car(car_id: str):
 
     if result == "DELETE 0":
         raise HTTPException(
-            status_code=404,
-            detail="Car not found",
+            404,
+            "Car not found",
         )
 
     return {

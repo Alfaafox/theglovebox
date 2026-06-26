@@ -6,9 +6,6 @@ pool = None
 
 
 async def connect():
-    """
-    Create PostgreSQL connection pool.
-    """
     global pool
 
     if pool is None:
@@ -20,9 +17,6 @@ async def connect():
 
 
 async def disconnect():
-    """
-    Close PostgreSQL connection pool.
-    """
     global pool
 
     if pool:
@@ -31,50 +25,156 @@ async def disconnect():
 
 
 def get_pool():
-    if pool is None:
-        raise RuntimeError("Database has not been initialized.")
     return pool
 
 
 async def initialize_database():
-    """
-    Create application tables if they don't exist.
-    """
 
     async with pool.acquire() as conn:
 
-        # ---------------------------------------------------------------------
-        # Cars
-        # ---------------------------------------------------------------------
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS brands(
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            country TEXT,
+            website TEXT,
+            logo TEXT,
+            created_at BIGINT NOT NULL
+        );
+        """)
 
-        await conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS cars (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                brand TEXT,
-                status TEXT DEFAULT 'owned',
-                variant TEXT,
-                tags TEXT[],
-                photo TEXT,
-                story TEXT,
-                created_at BIGINT
-            );
-            """
-        )
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS manufacturers(
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            country TEXT,
+            website TEXT,
+            logo TEXT,
+            created_at BIGINT NOT NULL
+        );
+        """)
 
-        # ---------------------------------------------------------------------
-        # Blog Posts
-        # ---------------------------------------------------------------------
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS series(
+            id BIGSERIAL PRIMARY KEY,
+            brand_id BIGINT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at BIGINT NOT NULL
+        );
+        """)
 
-        await conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS posts (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                body TEXT NOT NULL,
-                created_at BIGINT
-            );
-            """
-        )
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS cars(
+            id BIGSERIAL PRIMARY KEY,
 
+            brand_id BIGINT NOT NULL REFERENCES brands(id),
+            manufacturer_id BIGINT NOT NULL REFERENCES manufacturers(id),
+            series_id BIGINT NOT NULL REFERENCES series(id),
+
+            name TEXT NOT NULL,
+            variant TEXT,
+            scale TEXT,
+            year INTEGER,
+            country TEXT,
+
+            status TEXT DEFAULT 'owned',
+
+            purchase_price NUMERIC(12,2),
+            purchase_date DATE,
+            purchase_location TEXT,
+
+            estimated_value NUMERIC(12,2),
+
+            story TEXT,
+            notes TEXT,
+
+            created_at BIGINT NOT NULL,
+            updated_at BIGINT NOT NULL
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS car_images(
+            id BIGSERIAL PRIMARY KEY,
+
+            car_id BIGINT NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+
+            filename TEXT NOT NULL,
+            original_name TEXT,
+
+            image_type TEXT,
+
+            display_order INTEGER DEFAULT 0,
+
+            is_primary BOOLEAN DEFAULT FALSE,
+
+            created_at BIGINT NOT NULL
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS tags(
+            id BIGSERIAL PRIMARY KEY,
+
+            name TEXT UNIQUE NOT NULL,
+
+            created_at BIGINT NOT NULL
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS car_tags(
+
+            car_id BIGINT NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+
+            tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+
+            PRIMARY KEY(car_id,tag_id)
+
+        );
+        """)
+
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS posts(
+
+            id BIGSERIAL PRIMARY KEY,
+
+            title TEXT NOT NULL,
+
+            body TEXT NOT NULL,
+
+            created_at BIGINT NOT NULL
+
+        );
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_brand
+        ON cars(brand_id);
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_manufacturer
+        ON cars(manufacturer_id);
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_series
+        ON cars(series_id);
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_status
+        ON cars(status);
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_car_images
+        ON car_images(car_id);
+        """)
+
+        await conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_tags
+        ON car_tags(car_id);
+        """)
