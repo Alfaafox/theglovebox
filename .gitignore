@@ -24,3 +24,6 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+test1.jpg
+test2.jpg
+server.log
