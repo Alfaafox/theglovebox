@@ -1,36 +1,36 @@
-from fastapi import APIRouter
-from fastapi import File
-from fastapi import Form
-from fastapi import UploadFile
+from typing import List
+
+from fastapi import APIRouter, File, Form, UploadFile
 
 from app.services.image_service import (
-    save_image,
+    save_images,
     list_images,
     delete_image,
+    set_primary_image,
 )
 
 router = APIRouter()
 
 
 @router.post("/api/cars/{car_id}/images")
-async def upload_image(
-    car_id: str,
-    file: UploadFile = File(...),
+async def upload_images(
+    car_id: int,
+    files: List[UploadFile] = File(...),
     image_type: str = Form("gallery"),
 ):
-    return await save_image(
-        car_id,
-        file,
-        image_type,
-    )
+    return await save_images(car_id, files, image_type)
 
 
 @router.get("/api/cars/{car_id}/images")
-async def get_images(car_id: str):
+async def get_images(car_id: int):
     return await list_images(car_id)
 
 
 @router.delete("/api/images/{image_id}")
-async def remove_image(image_id: str):
+async def remove_image(image_id: int):
     return await delete_image(image_id)
 
+
+@router.put("/api/cars/{car_id}/images/{image_id}/primary")
+async def make_primary(car_id: int, image_id: int):
+    return await set_primary_image(car_id, image_id)
