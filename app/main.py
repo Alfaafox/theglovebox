@@ -20,6 +20,7 @@ from app.routers.cars import router as cars_router
 from app.routers.tags import router as tags_router
 from app.routers.posts import router as posts_router
 from app.routers.upload import router as upload_router
+from app.routers.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -101,3 +102,8 @@ async def root():
         "status": "running",
     }
 
+
+app.include_router(
+    auth_router,
+    tags=["Auth"],
+)
