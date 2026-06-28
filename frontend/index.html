@@ -12,10 +12,13 @@ body{background:var(--ink);color:var(--cream);font-family:'Inter',sans-serif;min
 header{border-bottom:1px solid var(--line-dark);padding:24px 0 16px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;position:sticky;top:0;background:var(--ink);z-index:10;}
 .brand h1{font-family:'Playfair Display',serif;font-weight:700;font-size:30px;}
 .brand .tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(244,239,227,0.4);}
+.header-right{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
 nav{display:flex;gap:2px;flex-wrap:wrap;}
 nav button{background:none;border:none;font-size:13px;letter-spacing:0.4px;text-transform:uppercase;color:rgba(244,239,227,0.55);padding:8px 14px;cursor:pointer;border-radius:3px;transition:.15s;}
 nav button:hover{color:var(--cream);background:rgba(244,239,227,0.06);}
 nav button.active{color:var(--ink);background:var(--cream);}
+.auth-area{font-size:12px;display:flex;align-items:center;gap:8px;}
+.auth-area .who{color:rgba(244,239,227,0.5);font-family:'JetBrains Mono',monospace;font-size:11px;}
 main{padding:36px 0 80px;}
 .view{display:none;}
 .view.active{display:block;animation:fadein .2s;}
@@ -42,6 +45,7 @@ main{padding:36px 0 80px;}
 .btn.ghost{background:transparent;border:1px solid var(--bronze);color:var(--bronze);}
 .btn.ghost:hover{background:rgba(139,111,71,0.12);}
 .btn.dark{background:var(--cream);color:var(--ink);}
+.btn.small{padding:6px 14px;font-size:12px;}
 .btn:disabled{opacity:0.5;cursor:not-allowed;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;}
 .card{background:var(--cream);color:var(--ink);border-radius:2px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s;border:1px solid rgba(0,0,0,0.08);}
@@ -69,6 +73,7 @@ main{padding:36px 0 80px;}
 .field-row{display:flex;gap:12px;}
 .field-row .field{flex:1;}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+.modal-error{color:var(--red);font-size:12px;margin-top:-4px;margin-bottom:12px;display:none;}
 .detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:50;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
 .detail-overlay.show{display:flex;}
 .detail{background:var(--cream);color:var(--ink);width:100%;max-width:640px;border-radius:4px;overflow:hidden;}
@@ -106,13 +111,16 @@ footer{border-top:1px solid var(--line-dark);padding:24px 0;text-align:center;fo
       <h1>The Glovebox</h1>
       <div class="tag">Garage · Blog · Live API</div>
     </div>
-    <nav>
-      <button class="nav-btn active" data-view="home">Home</button>
-      <button class="nav-btn" data-view="garage">Garage</button>
-      <button class="nav-btn" data-view="blog">Blog</button>
-      <button class="nav-btn" data-view="stats">Stats</button>
-      <button class="nav-btn" data-view="about">About</button>
-    </nav>
+    <div class="header-right">
+      <nav>
+        <button class="nav-btn active" data-view="home">Home</button>
+        <button class="nav-btn" data-view="garage">Garage</button>
+        <button class="nav-btn" data-view="blog">Blog</button>
+        <button class="nav-btn" data-view="stats">Stats</button>
+        <button class="nav-btn" data-view="about">About</button>
+      </nav>
+      <div class="auth-area" id="auth-area"></div>
+    </div>
   </header>
   <main>
     <div class="view active" id="view-home">
@@ -169,6 +177,19 @@ footer{border-top:1px solid var(--line-dark);padding:24px 0;text-align:center;fo
     </div>
   </main>
   <footer>The Glovebox — FastAPI + Postgres backend, live.</footer>
+</div>
+
+<div class="modal-overlay" id="login-modal">
+  <div class="modal">
+    <h3>Log in</h3>
+    <div class="field"><label>Username</label><input type="text" id="login-username"></div>
+    <div class="field"><label>Password</label><input type="password" id="login-password"></div>
+    <div class="modal-error" id="login-error"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="login-cancel-btn">Cancel</button>
+      <button class="btn dark" id="login-submit-btn">Log in</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="car-modal">
@@ -239,11 +260,74 @@ let cars = [], brands = [], manufacturers = [], series = [], tags = [], posts = 
 let brandMap = {}, manufacturerMap = {}, seriesMap = {};
 let activeDetailId = null;
 
+/* ---------- AUTH ---------- */
+function getToken() { return localStorage.getItem('glovebox_token'); }
+function setToken(t) { localStorage.setItem('glovebox_token', t); }
+function clearToken() { localStorage.removeItem('glovebox_token'); }
+function getUsername() { return localStorage.getItem('glovebox_username'); }
+function setUsername(u) { localStorage.setItem('glovebox_username', u); }
+
+function renderAuthArea() {
+  const area = document.getElementById('auth-area');
+  const token = getToken();
+  if (token) {
+    area.innerHTML = `<span class="who">${escapeHtml(getUsername() || 'logged in')}</span><button class="btn ghost small" id="logout-btn">Log out</button>`;
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      clearToken();
+      localStorage.removeItem('glovebox_username');
+      renderAuthArea();
+    });
+  } else {
+    area.innerHTML = `<button class="btn ghost small" id="login-open-btn">Log in</button>`;
+    document.getElementById('login-open-btn').addEventListener('click', openLoginModal);
+  }
+}
+
+function openLoginModal() {
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-modal').classList.add('show');
+}
+document.getElementById('login-cancel-btn').addEventListener('click', () => document.getElementById('login-modal').classList.remove('show'));
+document.getElementById('login-submit-btn').addEventListener('click', async () => {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = 'Username and password required.'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.detail || 'Login failed'); }
+    const data = await res.json();
+    setToken(data.access_token);
+    setUsername(username);
+    document.getElementById('login-modal').classList.remove('show');
+    renderAuthArea();
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+});
+
+/* ---------- API HELPER ---------- */
 async function api(path, options = {}) {
-  const res = await fetch(API + path, {
-    headers: options.body && !(options.body instanceof FormData) ? {'Content-Type': 'application/json'} : {},
-    ...options
-  });
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = {};
+  if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  if (method !== 'GET') {
+    const token = getToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+  }
+  const res = await fetch(API + path, { ...options, headers: { ...headers, ...(options.headers||{}) } });
+  if (res.status === 401) {
+    openLoginModal();
+    throw new Error('Please log in to make changes.');
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try { const j = await res.json(); detail = j.detail || detail; } catch(e) {}
@@ -360,7 +444,7 @@ function renderBlog() {
       <div class="blog-actions"><button class="icon-btn" data-delete="${p.id}">Delete</button></div>
     </div>`).join('');
   container.querySelectorAll('[data-delete]').forEach(btn => btn.addEventListener('click', async () => {
-    if (confirm('Delete this entry?')) { await api(`/posts/${btn.dataset.delete}`, {method:'DELETE'}); posts = posts.filter(p => p.id != btn.dataset.delete); renderBlog(); }
+    if (confirm('Delete this entry?')) { try { await api(`/posts/${btn.dataset.delete}`, {method:'DELETE'}); posts = posts.filter(p => p.id != btn.dataset.delete); renderBlog(); } catch(e) { alert(e.message); } }
   }));
 }
 
@@ -507,6 +591,7 @@ document.getElementById('blog-save-btn').addEventListener('click', async () => {
   } catch(e) { alert(e.message); }
 });
 
+renderAuthArea();
 loadData();
 </script>
 </body>
