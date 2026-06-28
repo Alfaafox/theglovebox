@@ -1,10 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.schemas.series import (
     SeriesCreate,
     SeriesUpdate,
 )
-
 from app.services.series_service import (
     list_series,
     get_series,
@@ -12,6 +11,7 @@ from app.services.series_service import (
     update_series,
     delete_series,
 )
+from app.services.auth_service import get_current_user
 
 router = APIRouter()
 
@@ -27,15 +27,19 @@ async def get_one(series_id: int):
 
 
 @router.post("")
-async def create(data: SeriesCreate):
+async def create(data: SeriesCreate, current_user: dict = Depends(get_current_user)):
     return await create_series(data)
 
 
 @router.put("/{series_id}")
-async def update(series_id: int, data: SeriesUpdate):
+async def update(
+    series_id: int,
+    data: SeriesUpdate,
+    current_user: dict = Depends(get_current_user),
+):
     return await update_series(series_id, data)
 
 
 @router.delete("/{series_id}")
-async def delete(series_id: int):
+async def delete(series_id: int, current_user: dict = Depends(get_current_user)):
     return await delete_series(series_id)

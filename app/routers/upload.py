@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, UploadFile, Depends
 
 from app.services.image_service import (
     save_images,
@@ -8,6 +8,7 @@ from app.services.image_service import (
     delete_image,
     set_primary_image,
 )
+from app.services.auth_service import get_current_user
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ async def upload_images(
     car_id: int,
     files: List[UploadFile] = File(...),
     image_type: str = Form("gallery"),
+    current_user: dict = Depends(get_current_user),
 ):
     return await save_images(car_id, files, image_type)
 
@@ -27,10 +29,14 @@ async def get_images(car_id: int):
 
 
 @router.delete("/api/images/{image_id}")
-async def remove_image(image_id: int):
+async def remove_image(image_id: int, current_user: dict = Depends(get_current_user)):
     return await delete_image(image_id)
 
 
 @router.put("/api/cars/{car_id}/images/{image_id}/primary")
-async def make_primary(car_id: int, image_id: int):
+async def make_primary(
+    car_id: int,
+    image_id: int,
+    current_user: dict = Depends(get_current_user),
+):
     return await set_primary_image(car_id, image_id)
