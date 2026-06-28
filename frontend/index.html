@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Glovebox</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--cream:#F4EFE3;--ink:#16181C;--red:#C8472E;--bronze:#8B6F47;--green:#2C4A3E;--line-dark:rgba(244,239,227,0.12);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--ink);color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;}
+.app{max-width:1180px;margin:0 auto;padding:0 24px;}
+header{border-bottom:1px solid var(--line-dark);padding:24px 0 16px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;position:sticky;top:0;background:var(--ink);z-index:10;}
+.brand h1{font-family:'Playfair Display',serif;font-weight:700;font-size:30px;}
+.brand .tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(244,239,227,0.4);}
+nav{display:flex;gap:2px;flex-wrap:wrap;}
+nav button{background:none;border:none;font-size:13px;letter-spacing:0.4px;text-transform:uppercase;color:rgba(244,239,227,0.55);padding:8px 14px;cursor:pointer;border-radius:3px;transition:.15s;}
+nav button:hover{color:var(--cream);background:rgba(244,239,227,0.06);}
+nav button.active{color:var(--ink);background:var(--cream);}
+main{padding:36px 0 80px;}
+.view{display:none;}
+.view.active{display:block;animation:fadein .2s;}
+@keyframes fadein{from{opacity:0;}to{opacity:1;}}
+.page-head{margin-bottom:28px;}
+.page-head .kicker{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:6px;}
+.page-head h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;}
+.page-head p{color:rgba(244,239,227,0.55);font-size:14px;margin-top:8px;max-width:560px;}
+.placeholder{border:1px dashed var(--line-dark);border-radius:6px;padding:60px 30px;text-align:center;color:rgba(244,239,227,0.35);}
+.placeholder .icon{font-size:32px;margin-bottom:14px;opacity:0.5;}
+.placeholder h3{font-family:'Playfair Display',serif;font-size:18px;color:rgba(244,239,227,0.55);margin-bottom:8px;font-weight:600;}
+.placeholder p{font-size:13px;max-width:380px;margin:0 auto;}
+.stats-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line-dark);border:1px solid var(--line-dark);margin-bottom:36px;}
+.stat-cell{background:var(--ink);padding:18px 16px;}
+.stat-cell .num{font-family:'JetBrains Mono',monospace;font-size:28px;line-height:1;}
+.stat-cell .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(244,239,227,0.5);margin-top:6px;}
+.stat-cell.accent .num{color:var(--red);}
+.controls{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center;}
+.controls input[type="text"], .controls select{background:transparent;border:1px solid var(--line-dark);color:var(--cream);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;border-radius:3px;}
+.controls input[type="text"]{flex:1;min-width:160px;}
+.controls select option{background:var(--ink);color:var(--cream);}
+.btn{background:var(--red);color:var(--cream);border:none;font-size:13px;font-weight:500;padding:9px 18px;border-radius:3px;cursor:pointer;}
+.btn:hover{background:#b03d27;}
+.btn.ghost{background:transparent;border:1px solid var(--bronze);color:var(--bronze);}
+.btn.ghost:hover{background:rgba(139,111,71,0.12);}
+.btn.dark{background:var(--cream);color:var(--ink);}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;}
+.card{background:var(--cream);color:var(--ink);border-radius:2px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s;border:1px solid rgba(0,0,0,0.08);}
+.card:hover{transform:translateY(-3px);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:var(--red);}
+.card.preorder::before{background:var(--bronze);}
+.card-photo{height:140px;background:repeating-linear-gradient(135deg, rgba(0,0,0,0.04) 0 10px, rgba(0,0,0,0.01) 10px 20px);display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.25);font-size:11px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid rgba(0,0,0,0.08);overflow:hidden;}
+.card-photo img{width:100%;height:100%;object-fit:cover;}
+.card-body{padding:14px 16px 16px;}
+.card-brand{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--red);margin-bottom:4px;}
+.card-name{font-family:'Playfair Display',serif;font-weight:600;font-size:16px;line-height:1.25;margin-bottom:4px;}
+.card-variant{font-size:12px;color:rgba(0,0,0,0.55);margin-bottom:8px;}
+.card-tags{display:flex;gap:6px;flex-wrap:wrap;}
+.tag-pill{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(44,74,62,0.1);color:var(--green);text-transform:uppercase;}
+.tag-pill.status{background:rgba(139,111,71,0.15);color:var(--bronze);}
+.empty-state{text-align:center;padding:50px 20px;color:rgba(244,239,227,0.4);font-size:14px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:50;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--cream);color:var(--ink);width:100%;max-width:560px;border-radius:4px;padding:28px;}
+.modal h3{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:rgba(0,0,0,0.5);margin-bottom:5px;}
+.field input, .field select, .field textarea{width:100%;border:1px solid rgba(0,0,0,0.18);background:#fff;padding:9px 11px;font-family:'Inter',sans-serif;font-size:13px;border-radius:3px;}
+.field textarea{resize:vertical;min-height:60px;}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:50;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.detail-overlay.show{display:flex;}
+.detail{background:var(--cream);color:var(--ink);width:100%;max-width:640px;border-radius:4px;overflow:hidden;}
+.detail-photo{height:220px;background:repeating-linear-gradient(135deg, rgba(0,0,0,0.05) 0 10px, rgba(0,0,0,0.02) 10px 20px);position:relative;}
+.detail-photo img{width:100%;height:100%;object-fit:cover;}
+.detail-body{padding:24px 28px 28px;}
+.detail-brand{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);}
+.detail-name{font-family:'Playfair Display',serif;font-weight:700;font-size:28px;margin:6px 0 4px;}
+.detail-variant{font-size:14px;color:rgba(0,0,0,0.6);margin-bottom:16px;}
+.detail-story{font-size:14px;line-height:1.7;border-top:1px solid rgba(0,0,0,0.12);padding-top:16px;margin-top:8px;}
+.detail-close{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.5);color:#fff;border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;}
+.detail-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+.tag-manager{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;}
+.blog-list{max-width:680px;}
+.blog-entry{border-bottom:1px solid var(--line-dark);padding:26px 0;}
+.blog-entry:first-child{padding-top:0;}
+.blog-date{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--red);text-transform:uppercase;}
+.blog-title{font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin:6px 0 10px;}
+.blog-body{font-size:15px;line-height:1.75;color:rgba(244,239,227,0.82);white-space:pre-wrap;}
+.blog-actions{margin-top:12px;display:flex;gap:8px;}
+.icon-btn{background:none;border:none;color:rgba(244,239,227,0.45);font-size:12px;cursor:pointer;text-decoration:underline;}
+.icon-btn:hover{color:var(--cream);}
+.section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.section-head h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:600;}
+.about-content{max-width:640px;font-size:15px;line-height:1.8;color:rgba(244,239,227,0.8);}
+.about-content h3{font-family:'Playfair Display',serif;color:var(--cream);font-size:18px;margin:24px 0 10px;}
+footer{border-top:1px solid var(--line-dark);padding:24px 0;text-align:center;font-size:12px;color:rgba(244,239,227,0.35);}
+.loading-msg{padding:40px;text-align:center;color:rgba(244,239,227,0.4);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>The Glovebox</h1>
+      <div class="tag">Garage · Blog · Live API</div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="home">Home</button>
+      <button class="nav-btn" data-view="garage">Garage</button>
+      <button class="nav-btn" data-view="blog">Blog</button>
+      <button class="nav-btn" data-view="stats">Stats</button>
+      <button class="nav-btn" data-view="about">About</button>
+    </nav>
+  </header>
+  <main>
+    <div class="view active" id="view-home">
+      <div class="page-head">
+        <div class="kicker">Welcome</div>
+        <h2>A running record of the collection</h2>
+        <p>Live data straight from the database — every car, tag, and photo here is real.</p>
+      </div>
+      <div class="stats-strip" id="home-stats"></div>
+      <div class="section-head"><h2>Recently added</h2></div>
+      <div class="grid" id="home-recent"></div>
+    </div>
+
+    <div class="view" id="view-garage">
+      <div class="page-head">
+        <div class="kicker">The Collection</div>
+        <h2>Garage</h2>
+        <p>Every car, filterable by brand and status. Click any card for details, photos, and tags.</p>
+      </div>
+      <div class="controls">
+        <input type="text" id="search" placeholder="Search by name or variant...">
+        <select id="filter-brand"><option value="">All brands</option></select>
+        <select id="filter-status"><option value="">All status</option><option value="owned">Owned</option><option value="preorder">Pre-order</option></select>
+        <button class="btn" id="add-car-btn">+ Add car</button>
+      </div>
+      <div class="grid" id="car-grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none;">No cars match. Try clearing filters, or add your first car.</div>
+    </div>
+
+    <div class="view" id="view-blog">
+      <div class="page-head">
+        <div class="kicker">The Logbook</div>
+        <h2>Blog</h2>
+        <p>Write-ups, spotlights, and the story behind the shelf.</p>
+      </div>
+      <div class="section-head"><h2>Entries</h2><button class="btn" id="add-post-btn">+ New entry</button></div>
+      <div class="blog-list" id="blog-entries"></div>
+    </div>
+
+    <div class="view" id="view-stats">
+      <div class="page-head"><div class="kicker">The Numbers</div><h2>Stats</h2><p>Live totals, pulled directly from the garage.</p></div>
+      <div class="stats-strip" id="stats-strip-main"></div>
+      <div class="section-head"><h2>By brand</h2></div>
+      <div id="brand-breakdown"></div>
+    </div>
+
+    <div class="view" id="view-about">
+      <div class="page-head"><div class="kicker">The Collector</div><h2>About</h2></div>
+      <div class="about-content">
+        <p>This space is ready for your story — how the collection started, what you chase, and why.</p>
+        <h3>What this site is</h3>
+        <p>A living record of a 1:64 scale die-cast collection — built one car, one story, at a time.</p>
+      </div>
+    </div>
+  </main>
+  <footer>The Glovebox — FastAPI + Postgres backend, live.</footer>
+</div>
+
+<div class="modal-overlay" id="car-modal">
+  <div class="modal">
+    <h3 id="car-modal-title">Add a car</h3>
+    <div class="field"><label>Name</label><input type="text" id="f-name"></div>
+    <div class="field-row">
+      <div class="field"><label>Brand</label><select id="f-brand"></select></div>
+      <div class="field"><label>Manufacturer</label><select id="f-manufacturer"></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Series</label><select id="f-series"></select></div>
+      <div class="field"><label>Status</label><select id="f-status"><option value="owned">Owned</option><option value="preorder">Pre-order</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Variant / livery</label><input type="text" id="f-variant"></div>
+      <div class="field"><label>Scale</label><input type="text" id="f-scale" placeholder="1:64"></div>
+    </div>
+    <div class="field"><label>Story / notes</label><textarea id="f-story"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="car-cancel-btn">Cancel</button>
+      <button class="btn dark" id="car-save-btn">Save car</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="blog-modal">
+  <div class="modal">
+    <h3 id="blog-modal-title">New entry</h3>
+    <div class="field"><label>Title</label><input type="text" id="b-title"></div>
+    <div class="field"><label>Entry</label><textarea id="b-body" style="min-height:160px;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="blog-cancel-btn">Cancel</button>
+      <button class="btn dark" id="blog-save-btn">Publish</button>
+    </div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail">
+    <div class="detail-photo" id="detail-photo"><button class="detail-close" id="detail-close-btn">&times;</button></div>
+    <div class="detail-body">
+      <div class="detail-brand" id="detail-brand"></div>
+      <div class="detail-name" id="detail-name"></div>
+      <div class="detail-variant" id="detail-variant"></div>
+      <div class="card-tags" id="detail-tags"></div>
+      <div class="tag-manager">
+        <select id="tag-select"></select>
+        <button class="btn ghost" id="attach-tag-btn">Add tag</button>
+        <input type="text" id="new-tag-name" placeholder="New tag name" style="flex:1;min-width:120px;padding:7px 10px;border-radius:3px;border:1px solid rgba(0,0,0,0.18);">
+        <button class="btn ghost" id="create-tag-btn">Create + attach</button>
+      </div>
+      <div style="margin-top:14px;">
+        <label style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:rgba(0,0,0,0.5);display:block;margin-bottom:6px;">Add photos</label>
+        <input type="file" id="image-upload-input" multiple accept="image/jpeg,image/png,image/webp">
+      </div>
+      <div class="detail-story" id="detail-story"></div>
+      <div class="detail-actions">
+        <button class="btn ghost" id="detail-delete-btn" style="border-color:var(--red);color:var(--red);">Delete car</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let cars = [], brands = [], manufacturers = [], series = [], tags = [], posts = [];
+let brandMap = {}, manufacturerMap = {}, seriesMap = {};
+let activeDetailId = null;
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    headers: options.body && !(options.body instanceof FormData) ? {'Content-Type': 'application/json'} : {},
+    ...options
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const j = await res.json(); detail = j.detail || detail; } catch(e) {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function loadData() {
+  try {
+    [cars, brands, manufacturers, series, tags, posts] = await Promise.all([
+      api('/cars'), api('/brands'), api('/manufacturers'), api('/series'), api('/tags'), api('/posts')
+    ]);
+  } catch(e) {
+    console.error('Failed to load data:', e);
+    document.getElementById('car-grid').innerHTML = `<div class="empty-state">Could not reach the API: ${e.message}</div>`;
+    return;
+  }
+  brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
+  manufacturerMap = Object.fromEntries(manufacturers.map(m => [m.id, m.name]));
+  seriesMap = Object.fromEntries(series.map(s => [s.id, s.name]));
+  await attachPrimaryImages();
+  renderAll();
+}
+
+async function attachPrimaryImages() {
+  await Promise.all(cars.map(async c => {
+    try {
+      const imgs = await api(`/cars/${c.id}/images`);
+      const primary = imgs.find(i => i.is_primary) || imgs[0];
+      c._image = primary ? `/uploads/cars/${c.id}/${primary.filename}` : null;
+    } catch(e) { c._image = null; }
+  }));
+}
+
+function renderAll() {
+  renderBrandFilter();
+  renderGrid();
+  renderBlog();
+  renderStats();
+  renderHome();
+}
+
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderBrandFilter() {
+  const sel = document.getElementById('filter-brand');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All brands</option>' + brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  sel.value = current;
+}
+
+function cardHtml(c) {
+  const brandName = brandMap[c.brand_id] || 'Unknown';
+  return `
+    <div class="card ${c.status === 'preorder' ? 'preorder' : ''}" data-id="${c.id}">
+      <div class="card-photo">${c._image ? `<img src="${c._image}" alt="">` : 'No photo'}</div>
+      <div class="card-body">
+        <div class="card-brand">${escapeHtml(brandName)}</div>
+        <div class="card-name">${escapeHtml(c.name)}</div>
+        <div class="card-variant">${escapeHtml(c.variant || '')}</div>
+        <div class="card-tags">${c.status === 'preorder' ? '<span class="tag-pill status">Pre-order</span>' : ''}</div>
+      </div>
+    </div>`;
+}
+
+function renderGrid() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const brandFilter = document.getElementById('filter-brand').value;
+  const statusFilter = document.getElementById('filter-status').value;
+  let filtered = cars.filter(c => {
+    if (brandFilter && String(c.brand_id) !== brandFilter) return false;
+    if (statusFilter && c.status !== statusFilter) return false;
+    if (search) {
+      const hay = [c.name, c.variant, brandMap[c.brand_id]].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  const grid = document.getElementById('car-grid');
+  const empty = document.getElementById('empty-state');
+  if (filtered.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map(cardHtml).join('');
+  grid.querySelectorAll('.card').forEach(el => el.addEventListener('click', () => openDetail(parseInt(el.dataset.id))));
+}
+
+function renderHome() {
+  const recent = [...cars].slice(-6).reverse();
+  document.getElementById('home-recent').innerHTML = recent.length ? recent.map(cardHtml).join('') : '<div class="empty-state">No cars added yet.</div>';
+  document.getElementById('home-recent').querySelectorAll('.card').forEach(el => el.addEventListener('click', () => openDetail(parseInt(el.dataset.id))));
+  const total = cars.length, owned = cars.filter(c => c.status === 'owned').length, preorder = cars.filter(c => c.status === 'preorder').length;
+  const brandCount = new Set(cars.map(c => c.brand_id)).size;
+  document.getElementById('home-stats').innerHTML = statsHtml(total, owned, preorder, brandCount);
+}
+
+function statsHtml(total, owned, preorder, brandCount) {
+  return `<div class="stat-cell accent"><div class="num">${total}</div><div class="lbl">Total cars</div></div>
+    <div class="stat-cell"><div class="num">${owned}</div><div class="lbl">Owned</div></div>
+    <div class="stat-cell"><div class="num">${preorder}</div><div class="lbl">Pre-order</div></div>
+    <div class="stat-cell"><div class="num">${brandCount}</div><div class="lbl">Brands</div></div>`;
+}
+
+function renderBlog() {
+  const container = document.getElementById('blog-entries');
+  if (posts.length === 0) { container.innerHTML = '<div class="empty-state">No entries yet.</div>'; return; }
+  const sorted = [...posts].sort((a,b) => b.created_at - a.created_at);
+  container.innerHTML = sorted.map(p => `
+    <div class="blog-entry">
+      <div class="blog-date">${new Date(p.created_at).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})}</div>
+      <div class="blog-title">${escapeHtml(p.title)}</div>
+      <div class="blog-body">${escapeHtml(p.body)}</div>
+      <div class="blog-actions"><button class="icon-btn" data-delete="${p.id}">Delete</button></div>
+    </div>`).join('');
+  container.querySelectorAll('[data-delete]').forEach(btn => btn.addEventListener('click', async () => {
+    if (confirm('Delete this entry?')) { await api(`/posts/${btn.dataset.delete}`, {method:'DELETE'}); posts = posts.filter(p => p.id != btn.dataset.delete); renderBlog(); }
+  }));
+}
+
+function renderStats() {
+  const total = cars.length, owned = cars.filter(c => c.status === 'owned').length, preorder = cars.filter(c => c.status === 'preorder').length;
+  const brandCount = new Set(cars.map(c => c.brand_id)).size;
+  document.getElementById('stats-strip-main').innerHTML = statsHtml(total, owned, preorder, brandCount);
+  const byBrand = {};
+  cars.forEach(c => { const b = brandMap[c.brand_id] || 'Unknown'; byBrand[b] = (byBrand[b]||0)+1; });
+  const sortedBrands = Object.entries(byBrand).sort((a,b) => b[1]-a[1]);
+  const maxCount = sortedBrands.length ? sortedBrands[0][1] : 1;
+  document.getElementById('brand-breakdown').innerHTML = sortedBrands.map(([brand,count]) => `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <div style="width:140px;font-size:13px;color:rgba(244,239,227,0.8);">${escapeHtml(brand)}</div>
+      <div style="flex:1;background:rgba(244,239,227,0.08);height:8px;border-radius:4px;overflow:hidden;"><div style="height:100%;background:var(--red);width:${(count/maxCount*100)}%;"></div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;width:30px;text-align:right;">${count}</div>
+    </div>`).join('') || '<div class="empty-state">No data yet.</div>';
+}
+
+document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + btn.dataset.view).classList.add('active');
+}));
+
+document.getElementById('search').addEventListener('input', renderGrid);
+document.getElementById('filter-brand').addEventListener('change', renderGrid);
+document.getElementById('filter-status').addEventListener('change', renderGrid);
+
+document.getElementById('add-car-btn').addEventListener('click', () => openCarModal());
+function openCarModal() {
+  document.getElementById('f-brand').innerHTML = brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  document.getElementById('f-manufacturer').innerHTML = manufacturers.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
+  document.getElementById('f-series').innerHTML = series.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-variant').value = '';
+  document.getElementById('f-scale').value = '';
+  document.getElementById('f-story').value = '';
+  document.getElementById('f-status').value = 'owned';
+  document.getElementById('car-modal').classList.add('show');
+}
+document.getElementById('car-cancel-btn').addEventListener('click', () => document.getElementById('car-modal').classList.remove('show'));
+document.getElementById('car-save-btn').addEventListener('click', async () => {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+  if (!brands.length || !manufacturers.length || !series.length) { alert('You need at least one Brand, Manufacturer, and Series before adding a car.'); return; }
+  const payload = {
+    brand_id: parseInt(document.getElementById('f-brand').value),
+    manufacturer_id: parseInt(document.getElementById('f-manufacturer').value),
+    series_id: parseInt(document.getElementById('f-series').value),
+    name,
+    variant: document.getElementById('f-variant').value.trim() || null,
+    scale: document.getElementById('f-scale').value.trim() || null,
+    status: document.getElementById('f-status').value,
+    story: document.getElementById('f-story').value.trim() || null
+  };
+  try {
+    const created = await api('/cars', {method:'POST', body: JSON.stringify(payload)});
+    created._image = null;
+    cars.push(created);
+    document.getElementById('car-modal').classList.remove('show');
+    renderAll();
+  } catch(e) { alert('Could not save car: ' + e.message); }
+});
+
+async function openDetail(id) {
+  activeDetailId = id;
+  const car = cars.find(c => c.id === id);
+  if (!car) return;
+  document.getElementById('detail-photo').innerHTML = (car._image ? `<img src="${car._image}" alt="">` : '') + '<button class="detail-close" id="detail-close-btn">&times;</button>';
+  document.getElementById('detail-photo').querySelector('.detail-close').addEventListener('click', closeDetail);
+  document.getElementById('detail-brand').textContent = brandMap[car.brand_id] || 'Unknown brand';
+  document.getElementById('detail-name').textContent = car.name;
+  document.getElementById('detail-variant').textContent = car.variant || '';
+  document.getElementById('detail-story').textContent = car.story || 'No story added yet.';
+
+  let carTags = [];
+  try { carTags = await api(`/cars/${id}/tags`); } catch(e) {}
+  document.getElementById('detail-tags').innerHTML = carTags.map(t => `<span class="tag-pill">${escapeHtml(t.name)}</span>`).join('') + (car.status === 'preorder' ? '<span class="tag-pill status">Pre-order</span>' : '');
+
+  document.getElementById('tag-select').innerHTML = tags.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  document.getElementById('detail-overlay').classList.add('show');
+}
+function closeDetail() { document.getElementById('detail-overlay').classList.remove('show'); activeDetailId = null; }
+document.getElementById('detail-close-btn')?.addEventListener('click', closeDetail);
+
+document.getElementById('attach-tag-btn').addEventListener('click', async () => {
+  const tagId = document.getElementById('tag-select').value;
+  if (!tagId || !activeDetailId) return;
+  try { await api(`/cars/${activeDetailId}/tags`, {method:'POST', body: JSON.stringify({tag_id: parseInt(tagId)})}); openDetail(activeDetailId); } catch(e) { alert(e.message); }
+});
+
+document.getElementById('create-tag-btn').addEventListener('click', async () => {
+  const name = document.getElementById('new-tag-name').value.trim();
+  if (!name || !activeDetailId) return;
+  try {
+    const newTag = await api('/tags', {method:'POST', body: JSON.stringify({name})});
+    tags.push(newTag);
+    await api(`/cars/${activeDetailId}/tags`, {method:'POST', body: JSON.stringify({tag_id: newTag.id})});
+    document.getElementById('new-tag-name').value = '';
+    openDetail(activeDetailId);
+  } catch(e) { alert(e.message); }
+});
+
+document.getElementById('image-upload-input').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files.length || !activeDetailId) return;
+  const formData = new FormData();
+  for (const f of files) formData.append('files', f);
+  formData.append('image_type', 'gallery');
+  try {
+    await api(`/cars/${activeDetailId}/images`, {method:'POST', body: formData});
+    await attachPrimaryImages();
+    openDetail(activeDetailId);
+    renderAll();
+  } catch(err) { alert('Upload failed: ' + err.message); }
+  e.target.value = '';
+});
+
+document.getElementById('detail-delete-btn').addEventListener('click', async () => {
+  if (!activeDetailId) return;
+  if (confirm('Delete this car from the collection?')) {
+    try { await api(`/cars/${activeDetailId}`, {method:'DELETE'}); cars = cars.filter(c => c.id !== activeDetailId); closeDetail(); renderAll(); }
+    catch(e) { alert(e.message); }
+  }
+});
+
+document.getElementById('add-post-btn').addEventListener('click', () => {
+  document.getElementById('b-title').value = '';
+  document.getElementById('b-body').value = '';
+  document.getElementById('blog-modal').classList.add('show');
+});
+document.getElementById('blog-cancel-btn').addEventListener('click', () => document.getElementById('blog-modal').classList.remove('show'));
+document.getElementById('blog-save-btn').addEventListener('click', async () => {
+  const title = document.getElementById('b-title').value.trim();
+  const body = document.getElementById('b-body').value.trim();
+  if (!title || !body) { alert('Title and entry text are required.'); return; }
+  try {
+    const created = await api('/posts', {method:'POST', body: JSON.stringify({title, body})});
+    posts.push(created);
+    document.getElementById('blog-modal').classList.remove('show');
+    renderBlog();
+  } catch(e) { alert(e.message); }
+});
+
+loadData();
+</script>
+</body>
+</html>
