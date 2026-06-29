@@ -138,12 +138,13 @@ footer{border-top:1px solid var(--line-dark);padding:24px 0;text-align:center;fo
       <div class="page-head">
         <div class="kicker">The Collection</div>
         <h2>Garage</h2>
-        <p>Every car, filterable by brand and status. Click any card for details, photos, and tags.</p>
+        <p>Every car, filterable by brand, status, and tag — searched live against the database.</p>
       </div>
       <div class="controls">
         <input type="text" id="search" placeholder="Search by name or variant...">
         <select id="filter-brand"><option value="">All brands</option></select>
         <select id="filter-status"><option value="">All status</option><option value="owned">Owned</option><option value="preorder">Pre-order</option></select>
+        <select id="filter-tag"><option value="">All tags</option></select>
         <button class="btn" id="add-car-btn">+ Add car</button>
       </div>
       <div class="grid" id="car-grid"></div>
@@ -259,6 +260,7 @@ const API = '/api';
 let cars = [], brands = [], manufacturers = [], series = [], tags = [], posts = [];
 let brandMap = {}, manufacturerMap = {}, seriesMap = {};
 let activeDetailId = null;
+let searchDebounceTimer = null;
 
 /* ---------- AUTH ---------- */
 function getToken() { return localStorage.getItem('glovebox_token'); }
@@ -350,12 +352,12 @@ async function loadData() {
   brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
   manufacturerMap = Object.fromEntries(manufacturers.map(m => [m.id, m.name]));
   seriesMap = Object.fromEntries(series.map(s => [s.id, s.name]));
-  await attachPrimaryImages();
+  await attachPrimaryImages(cars);
   renderAll();
 }
 
-async function attachPrimaryImages() {
-  await Promise.all(cars.map(async c => {
+async function attachPrimaryImages(list) {
+  await Promise.all(list.map(async c => {
     try {
       const imgs = await api(`/cars/${c.id}/images`);
       const primary = imgs.find(i => i.is_primary) || imgs[0];
@@ -366,7 +368,8 @@ async function attachPrimaryImages() {
 
 function renderAll() {
   renderBrandFilter();
-  renderGrid();
+  renderTagFilter();
+  fetchGarageCars();
   renderBlog();
   renderStats();
   renderHome();
@@ -378,6 +381,13 @@ function renderBrandFilter() {
   const sel = document.getElementById('filter-brand');
   const current = sel.value;
   sel.innerHTML = '<option value="">All brands</option>' + brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  sel.value = current;
+}
+
+function renderTagFilter() {
+  const sel = document.getElementById('filter-tag');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All tags</option>' + tags.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
   sel.value = current;
 }
 
@@ -395,24 +405,41 @@ function cardHtml(c) {
     </div>`;
 }
 
-function renderGrid() {
-  const search = document.getElementById('search').value.toLowerCase();
-  const brandFilter = document.getElementById('filter-brand').value;
-  const statusFilter = document.getElementById('filter-status').value;
-  let filtered = cars.filter(c => {
-    if (brandFilter && String(c.brand_id) !== brandFilter) return false;
-    if (statusFilter && c.status !== statusFilter) return false;
-    if (search) {
-      const hay = [c.name, c.variant, brandMap[c.brand_id]].join(' ').toLowerCase();
-      if (!hay.includes(search)) return false;
-    }
-    return true;
+/* ---------- SERVER-SIDE SEARCH ---------- */
+async function fetchGarageCars() {
+  const q = document.getElementById('search').value.trim();
+  const brand_id = document.getElementById('filter-brand').value;
+  const status = document.getElementById('filter-status').value;
+  const tag_id = document.getElementById('filter-tag').value;
+
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (brand_id) params.set('brand_id', brand_id);
+  if (status) params.set('status', status);
+  if (tag_id) params.set('tag_id', tag_id);
+
+  let results;
+  try {
+    results = await api('/cars' + (params.toString() ? '?' + params.toString() : ''));
+  } catch(e) {
+    document.getElementById('car-grid').innerHTML = `<div class="empty-state">Search failed: ${e.message}</div>`;
+    return;
+  }
+
+  results.forEach(r => {
+    const existing = cars.find(c => c.id === r.id);
+    r._image = existing ? existing._image : null;
   });
+
+  renderGarageGrid(results);
+}
+
+function renderGarageGrid(list) {
   const grid = document.getElementById('car-grid');
   const empty = document.getElementById('empty-state');
-  if (filtered.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  if (list.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  grid.innerHTML = filtered.map(cardHtml).join('');
+  grid.innerHTML = list.map(cardHtml).join('');
   grid.querySelectorAll('.card').forEach(el => el.addEventListener('click', () => openDetail(parseInt(el.dataset.id))));
 }
 
@@ -471,9 +498,13 @@ document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click
   document.getElementById('view-' + btn.dataset.view).classList.add('active');
 }));
 
-document.getElementById('search').addEventListener('input', renderGrid);
-document.getElementById('filter-brand').addEventListener('change', renderGrid);
-document.getElementById('filter-status').addEventListener('change', renderGrid);
+document.getElementById('search').addEventListener('input', () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(fetchGarageCars, 300);
+});
+document.getElementById('filter-brand').addEventListener('change', fetchGarageCars);
+document.getElementById('filter-status').addEventListener('change', fetchGarageCars);
+document.getElementById('filter-tag').addEventListener('change', fetchGarageCars);
 
 document.getElementById('add-car-btn').addEventListener('click', () => openCarModal());
 function openCarModal() {
@@ -544,6 +575,7 @@ document.getElementById('create-tag-btn').addEventListener('click', async () => 
   try {
     const newTag = await api('/tags', {method:'POST', body: JSON.stringify({name})});
     tags.push(newTag);
+    renderTagFilter();
     await api(`/cars/${activeDetailId}/tags`, {method:'POST', body: JSON.stringify({tag_id: newTag.id})});
     document.getElementById('new-tag-name').value = '';
     openDetail(activeDetailId);
@@ -558,7 +590,7 @@ document.getElementById('image-upload-input').addEventListener('change', async (
   formData.append('image_type', 'gallery');
   try {
     await api(`/cars/${activeDetailId}/images`, {method:'POST', body: formData});
-    await attachPrimaryImages();
+    await attachPrimaryImages(cars);
     openDetail(activeDetailId);
     renderAll();
   } catch(err) { alert('Upload failed: ' + err.message); }
