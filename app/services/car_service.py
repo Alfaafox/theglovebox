@@ -5,54 +5,98 @@ from fastapi import HTTPException
 from app.database import get_pool
 
 
-async def list_cars():
+async def list_cars(
+    q: str = None,
+    brand_id: int = None,
+    manufacturer_id: int = None,
+    series_id: int = None,
+    status: str = None,
+    tag_id: int = None,
+):
 
     pool = get_pool()
 
-    async with pool.acquire() as conn:
+    conditions = []
+    params = []
 
-        rows = await conn.fetch(
-            """
-            SELECT
-                c.id,
-                c.name,
-                c.variant,
-                c.scale,
-                c.year,
-                c.country,
-                c.status,
-                c.purchase_price,
-                c.purchase_date,
-                c.purchase_location,
-                c.estimated_value,
-                c.story,
-                c.notes,
-                c.created_at,
-                c.updated_at,
+    def add_param(value):
+        params.append(value)
+        return f"${len(params)}"
 
-                b.id   AS brand_id,
-                b.name AS brand,
-
-                m.id   AS manufacturer_id,
-                m.name AS manufacturer,
-
-                s.id   AS series_id,
-                s.name AS series
-
-            FROM cars c
-
-            INNER JOIN brands b
-                ON b.id=c.brand_id
-
-            INNER JOIN manufacturers m
-                ON m.id=c.manufacturer_id
-
-            INNER JOIN series s
-                ON s.id=c.series_id
-
-            ORDER BY c.created_at DESC
-            """
+    if q:
+        placeholder = add_param(f"%{q}%")
+        conditions.append(
+            f"(c.name ILIKE {placeholder} OR c.variant ILIKE {placeholder})"
         )
+
+    if brand_id is not None:
+        conditions.append(f"c.brand_id = {add_param(brand_id)}")
+
+    if manufacturer_id is not None:
+        conditions.append(f"c.manufacturer_id = {add_param(manufacturer_id)}")
+
+    if series_id is not None:
+        conditions.append(f"c.series_id = {add_param(series_id)}")
+
+    if status:
+        conditions.append(f"c.status = {add_param(status)}")
+
+    tag_join = ""
+    if tag_id is not None:
+        tag_join = "INNER JOIN car_tags ct ON ct.car_id = c.id"
+        conditions.append(f"ct.tag_id = {add_param(tag_id)}")
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    query = f"""
+        SELECT
+            c.id,
+            c.name,
+            c.variant,
+            c.scale,
+            c.year,
+            c.country,
+            c.status,
+            c.purchase_price,
+            c.purchase_date,
+            c.purchase_location,
+            c.estimated_value,
+            c.story,
+            c.notes,
+            c.created_at,
+            c.updated_at,
+
+            b.id   AS brand_id,
+            b.name AS brand,
+
+            m.id   AS manufacturer_id,
+            m.name AS manufacturer,
+
+            s.id   AS series_id,
+            s.name AS series
+
+        FROM cars c
+
+        INNER JOIN brands b
+            ON b.id=c.brand_id
+
+        INNER JOIN manufacturers m
+            ON m.id=c.manufacturer_id
+
+        INNER JOIN series s
+            ON s.id=c.series_id
+
+        {tag_join}
+
+        {where_clause}
+
+        ORDER BY c.created_at DESC
+    """
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, *params)
 
     return [dict(r) for r in rows]
 
@@ -306,4 +350,3 @@ async def delete_car(car_id: int):
     return {
         "ok": True
     }
-

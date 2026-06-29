@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Depends, Query
 
 from app.schemas.car import (
     CarCreate,
@@ -21,8 +23,22 @@ router = APIRouter()
 
 
 @router.get("")
-async def get_all_cars():
-    return await list_cars()
+async def get_all_cars(
+    q: Optional[str] = Query(None),
+    brand_id: Optional[int] = Query(None),
+    manufacturer_id: Optional[int] = Query(None),
+    series_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    tag_id: Optional[int] = Query(None),
+):
+    return await list_cars(
+        q=q,
+        brand_id=brand_id,
+        manufacturer_id=manufacturer_id,
+        series_id=series_id,
+        status=status,
+        tag_id=tag_id,
+    )
 
 
 @router.get("/{car_id}")
